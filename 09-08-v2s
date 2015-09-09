@@ -38,7 +38,6 @@ var previousFrameTime, lastReportedPlayheadPosition;
 var songTime;
 var t;
 
-
 // Sets the speed of the notes as they move down the canvas.
 speed = 200;
 
@@ -133,7 +132,7 @@ function Timer(init, precision) {
   	};
 }
 
-// Starts the song.
+// Starts the song
 function songStarted() {
 	t = new Timer();
 	previousFrameTime = t.elapsed();
@@ -141,7 +140,7 @@ function songStarted() {
     song.play();
 }
 
-// Averages the songTime variable with the actual playhead position.
+// Averages the songTime variable with the actual playhead position
 function everyFrame() {
     songTime += t.elapsed() - previousFrameTime;
     previousFrameTime = t.elapsed();
@@ -151,13 +150,14 @@ function everyFrame() {
     }
 }
 
+
 // Draws the canvas, creates keystate listeners, initializes the function,
 // and updates everything.
 function main() {
 	canvas = document.createElement("canvas");
 	canvas.width = WIDTH;
 	canvas.height = HEIGHT;
-	ctx = canvas.getContext("2d");
+	ctx  = canvas.getContext("2d");
 	document.body.appendChild(canvas);
 
 	keystate = {};
