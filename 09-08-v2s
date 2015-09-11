@@ -100,50 +100,37 @@ text = {
 
 	// Updates the strings given in the debug text.
 	update: function() {
-		time = songTime;
+		time = song.currentTime;
 	},
 
 	// Draws the text itself in the corner of the canvas.
 	draw: function() {
 		ctx.font = "24px TimesNewRoman";
 		ctx.fillText("Text test", text.x, text.y);
-		ctx.fillText(time, 0, 48);
-		ctx.fillText(chart[0].y, 0, 72);
-		ctx.fillText(timePressed, 0, 96);
+		ctx.fillText("song.currentTime: " + time, 0, 48);
+		ctx.fillText("chart[0].y: " + chart[0].y, 0, 72);
+		ctx.fillText("timePressed: " + timePressed, 0, 96);
+		ctx.fillText("performance.now(): " + performance.now()/1000, 0, 120);
 	}
 }
 
 // Accesses the audio file.
 song = document.getElementById("myAudio");
 
-// Creates a timer
-function Timer(init, precision) {
-  	var start = time = new Date(init || null).valueOf(),
-  	    precision = precision || 100;
 
- 	setInterval(function () { time += precision; }, precision);
-
- 	this.elapsed = function() {
- 	 	return time - start;
- 	};
-
-  	this.getDate = function() {
-  		return new Date(time);
-  	};
-}
 
 // Starts the song
 function songStarted() {
-	t = new Timer();
-	previousFrameTime = t.elapsed();
+	songTime = 0;
+	previousFrameTime = performance.now()/1000;
     lastReportedPlayheadPosition = 0;
     song.play();
 }
 
 // Averages the songTime variable with the actual playhead position
 function everyFrame() {
-    songTime += t.elapsed() - previousFrameTime;
-    previousFrameTime = t.elapsed();
+    songTime += performance.now()/1000 - previousFrameTime;
+    previousFrameTime = performance.now()/1000;
     if(song.currentTime != lastReportedPlayheadPosition) {
         songTime = (songTime + song.currentTime)/2;
         lastReportedPlayheadPosition = song.currentTime;
@@ -171,9 +158,10 @@ function main() {
 	init();
 
 	var loop = function() {
-		everyFrame();
+		
 		update();
 		draw();
+		
 
 		window.requestAnimationFrame(loop, canvas);
 	};
@@ -188,9 +176,11 @@ function init() {
 
 // Accesses all the update functions and calls them.
 function update() {
+	everyFrame();
 	text.update();
 	notes.update();
 	checkIfPressed();
+	
 }
 
 // Draws the canvas; accesseses the draw functions and calls them.
