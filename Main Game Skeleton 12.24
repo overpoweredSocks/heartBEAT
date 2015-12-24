@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Test2</title>
+	<style>
+		canvas {
+ 			position: absolute;
+ 			margin: auto;
+ 			top: 0;
+ 			bottom: 0;
+ 			left: 0;
+ 			right: 0;
+ 		}
+	</style>
+
+</head>
+<body>
+
+<audio id = "myAudio"> <source src="audio.mp3" type="audio/mpeg"></audio>
+
+<button type = "button" onclick="songStarted()">Start da song!</button>
+
+
+<script>
+
+// Declares all the variables.
+var WIDTH=400, HEIGHT=600;
+var canvas, ctx, keystate; 
+var text, song;
+var strumBar;
+var chart, n;
+var speed;
+var notes;
+var SpaceBar=32;
+var timePressed;
+var previousFrameTime, lastReportedPlayheadPosition;
+var songTime;
+var t;
+var notesDeleted;
+var hitWindow = .5;  //in seconds, the range players have to "hit" notes before they are registered as missed
+var score=0;
+var heldScore=0;
+var fired=false;
+var heldFired=false;
+
+// Sets the speed of the notes as they move down the canvas.
+speed = 200;
+
+// Sets the number of test notes to display.
+n = 10;
+
+// Creates an array to store the notes from the chart file.
+chart = [];
+for (var i = 0; i < 2 * n; i++)
+    chart.push({});
+
+for (var i = 0; i < n; i++)
+	chart[i].strumTime = 4 + i*2;
+for (var i = 0; i < n; i++)
+	chart[i].endTime = 5 + i*2;
+
+
+for (var i = n; i < 2 * n; i++)
+	chart[i].strumTime = 18 + i * .5;
+for (var i = n; i < 2 * n; i++)
+	chart[i].endTime = 18 + i * .5;
+
+
+
+
+for (var i = 0; i < 2 * n; i++)
+	chart[i].played = false;
+
+
+notesDeleted = 0;
+
+// Stores information related to the notes as they move down the canvas.
+notes = {
+	
+	// Updates the location of the notes based on the time in the song.
+	update: function() {
+		for(var i = 0; i < 2 * n; i++) {
+			if (Math.abs(chart[i].strumTime - songTime) < hitWindow) { // Within window
+				if (keystate[SpaceBar]) { // Space pressed
+					if (chart[i].played) { // Start of note played
+						if (chart[i].endTime > songTime  && heldFired && chart[i].endTime != chart[i].strumTime) { // Still on held part
+							if (chart[i].strumTime <= songTime){
+							score += 1;
+							}
+						}
+						else { // After held part ends
+							chart[i] = 0;
+							notesDeleted += 1;
+						}
+					}
+					else { // Start of note not yet played
+						if (!fired) { // Previous note released
+							score += 500;
+							fired = true;
+							chart[i].played = true;
+							heldFired = true;
+						}
+					}
+				}
+				else {
+					if (chart[i].played) {
+						chart[i] = 0;
+						notesDeleted += 1;
+					}
+				}
+			}
+			else { // Outside window
+					if (songTime - hitWindow > chart[i].endTime) { // Tail offscreen
+						chart[i] = 0;
+						notesDeleted += 1;
+					}
+					if (chart[i].played) { // Start of note played
+						if (keystate[SpaceBar]) { // Space pressed
+							if (chart[i].endTime > songTime  && heldFired) { // Still on held part
+								score += 1;
+							} 
+							else { // After held part
+								chart[i] = 0;
+								notesDeleted += 1;
+							}
+						}
+						else { // Space not pressed ( spacebar released after played)
+							chart[i] = 0;
+							notesDeleted += 1;			
+						}
+					}
+					
+				}
+			
+			chart[i].y = strumBar.y - (chart[i].strumTime - songTime) * speed;
+			chart[i].heldY = strumBar.y - (chart[i].endTime - songTime) * speed;
+		}
+	},
+
+	// Draws the notes on the canvas.
+	draw: function() {
+		var noteWidth = 50;
+		var noteHeight = 12;
+		var heldWidth = 20
+		ctx.fillStyle = "#FFFFFF";
+		for(var i = 0; i < 2 * n; i++) {
+			ctx.fillRect(WIDTH/2 - noteWidth/2, chart[i].y, noteWidth, noteHeight);
+			ctx.fillRect(WIDTH/2 - heldWidth/2, chart[i].heldY, heldWidth, chart[i].y - chart[i].heldY);
+		}
+	}
+}
+
+// Checks to see whether a given key is pressed and at what time.
+function checkIfPressed() {
+	if (keystate[SpaceBar]) 
+		timePressed = songTime; 
+}
+
+// Stores information related to the strumbar,
+// which is where notes on the canvas line up with where they are in the song.
+strumBar = {
+	x:0,
+	y:500,
+	width:WIDTH,
+	height:10,
+
+	draw: function() {
+		if(keystate[SpaceBar])
+		{
+			ctx.fillStyle = "#02ff99";
+		}
+		else{
+			ctx.fillStyle = "#6699FF";
+		}	
+		ctx.fillRect(strumBar.x, strumBar.y, strumBar.width, strumBar.height);
+	}
+}
+
+// Stores information related to debug text.
+text = {
+	x:null,
+	y:null,
+	width: 200,
+	height: 100,
+	time:null,
+
+	// Updates the strings given in the debug text.
+	update: function() {
+		time = song.currentTime;
+	},
+
+	// Draws the text itself in the corner of the canvas.
+	draw: function() {
+		ctx.font = "24px TimesNewRoman";
+		ctx.fillText("Text test", text.x, text.y);
+		ctx.fillText("song.currentTime: " + time, 0, 48);
+		ctx.fillText("chart[0].y: " + chart[0].y, 0, 72);
+		ctx.fillText("timePressed: " + timePressed, 0, 96);
+		ctx.fillText("performance.now(): " + performance.now()/1000, 0, 120);
+		ctx.fillText("notes deleted: " + notesDeleted, 0, 144);
+		totalScore = score + heldScore;
+		ctx.fillText("score: " + totalScore, 0, 168);
+		ctx.fillText("fired: " + fired, 0, 192);
+		ctx.fillText("heldFired: " + heldFired, 0, 216);
+	}
+}
+
+// Accesses the audio file.
+song = document.getElementById("myAudio");
+
+
+// Starts the song
+function songStarted() {
+	songTime = 0;
+	previousFrameTime = performance.now()/1000;
+    lastReportedPlayheadPosition = 0;
+    song.play();
+}
+
+// Averages the songTime variable with the actual playhead position
+function everyFrame() {
+    songTime += performance.now()/1000 - previousFrameTime;
+    previousFrameTime = performance.now()/1000;
+    if(song.currentTime != lastReportedPlayheadPosition) {
+        songTime = (songTime + song.currentTime)/2;
+        lastReportedPlayheadPosition = song.currentTime;
+    }
+}
+
+
+// Draws the canvas, creates keystate listeners, initializes the function,
+// and updates everything.
+function main() {
+	canvas = document.createElement("canvas");
+	canvas.width = WIDTH;
+	canvas.height = HEIGHT;
+	ctx  = canvas.getContext("2d");
+	document.body.appendChild(canvas);
+
+	keystate = {};
+	document.addEventListener("keydown", function(evt) {
+		keystate[evt.keyCode] = true;
+	});
+	document.addEventListener("keyup", function(evt) {
+		delete keystate[evt.keyCode];
+		fired = false;
+		heldFired = false;
+	});
+
+	init();
+
+	var loop = function() {
+		
+		update();
+		draw();
+		
+		window.requestAnimationFrame(loop, canvas);
+	};
+	window.requestAnimationFrame(loop, canvas);
+}
+
+// Gives the initial locations of objects on the screen.
+function init() {
+	text.x = 0;
+	text.y = 24;
+}
+
+// Accesses all the update functions and calls them.
+function update() {
+	everyFrame();
+	text.update();
+	notes.update();
+	
+}
+
+// Draws the canvas; accesseses the draw functions and calls them.
+function draw() {
+	ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+	ctx.save();
+
+	ctx.fillStyle = "#fff";
+	text.draw();
+	strumBar.draw();
+	notes.draw();
+	
+	ctx.restore();
+}
+
+// Calls the main function.
+main();
+
+</script>
+
+
+
+</body>
+</html>
